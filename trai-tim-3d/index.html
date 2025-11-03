@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trái Tim 3D - Một Tệp</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas#webgl { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="webgl"></canvas>
+    
+    <script type="module">
+        // === 1. IMPORT (DÙNG LINK CDN ĐẦY ĐỦ) ===
+        // Code này dùng "https://..." nên Live Server sẽ hiểu
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/controls/OrbitControls.js';
+        import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/postprocessing/UnrealBloomPass.js';
+
+        // === 2. THIẾT LẬP CƠ BẢN ===
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+        camera.position.z = 30;
+        const canvas = document.querySelector('#webgl');
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 1);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // === 3. TẠO TRÁI TIM ===
+        const heartShape = new THREE.Shape();
+        heartShape.moveTo( 2.5, 2.5 );
+        heartShape.bezierCurveTo( 2.5, 2.5, 2.0, 0, 0, 0 );
+        heartShape.bezierCurveTo( -3.0, 0, -3.0, 3.5, -3.0, 3.5 );
+        heartShape.bezierCurveTo( -3.0, 5.5, -1.0, 7.7, 2.5, 9.5 );
+        heartShape.bezierCurveTo( 6.0, 7.7, 8.0, 5.5, 8.0, 3.5 );
+        heartShape.bezierCurveTo( 8.0, 3.5, 8.0, 0, 5.0, 0 );
+        heartShape.bezierCurveTo( 3.5, 0, 2.5, 2.5, 2.5, 2.5 );
+        const extrudeSettings = { depth: 1, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 1, bevelThickness: 1 };
+        const geometry = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+        const material = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true });
+        const heartMesh = new THREE.Mesh(geometry, material);
+        geometry.center();
+        scene.add(heartMesh);
+
+        // === 4. TẠO CÁC VÌ SAO ===
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 10000;
+        const positions = new Float32Array(starCount * 3);
+        for(let i = 0; i < starCount * 3; i++) {
+            positions[i] = (Math.random() - 0.5) * 200;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // === 5. HIỆU ỨNG "GLOW" ===
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        const bloomPass = new UnrealBloomPass( new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85 );
+        composer.addPass(bloomPass);
+
+        // === 6. VÒNG LẶP ===
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+            controls.update();
+            stars.rotation.y = elapsedTime * 0.02;
+            material.color.setHSL((elapsedTime * 0.1) % 1, 1, 0.6);
+            composer.render();
+        }
+        animate();
+
+        // === 7. RESIZE ===
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            composer.setSize(width, height);
+        });
+    </script>
+</body>
+</html>
